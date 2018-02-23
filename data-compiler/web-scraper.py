@@ -3,7 +3,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 
-DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'frontend', 'static')
+DIST_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'dist')
 BASE_URL = 'https://{lang}.finalfantasyxiv.com/jobguide/{jobname}/'
 LANG = ('na', 'jp')
 
@@ -86,6 +86,11 @@ def main():
     type_texts = {x:[] for x in LANG}
     content_texts = {x:[] for x in LANG}
 
+    output_data = {
+        'common': [],
+        'only': [],
+    }
+
     def make_text_id(store, values, filter):
         values = [(k, filter(v)) for k, v in values]
         k, v = values[0]
@@ -132,11 +137,17 @@ def main():
         icon_name = os.path.basename(icon_source)
         images.append((icon_name, icon_source))
         images += _images
-        jsons.append(('common_actions.' + role + '.json', {
+        #  jsons.append(('common_actions.' + role + '.json', {
+            #  'id': make_text_id(role_texts, datalist, lambda x: x['role']),
+            #  'icon': icon_name,
+            #  'actions': _actions,
+            #  }))
+        #  output_data[make_text_id(role_texts, datalist, lambda x: x['role'])] = {
+        output_data['common'].append({
             'id': make_text_id(role_texts, datalist, lambda x: x['role']),
             'icon': icon_name,
             'actions': _actions,
-            }))
+            })
 
         for jobname in jobnames:
             datalist = [(x, get_job_data(BASE_URL.format(lang=x, jobname=jobname))) for x in LANG]
@@ -145,12 +156,19 @@ def main():
             icon_name = os.path.basename(icon_source)
             images.append((icon_name, icon_source))
             images += _images
-            jsons.append(('only_actions.' + jobname + '.json', {
+            #  jsons.append(('only_actions.' + jobname + '.json', {
+                #  'id': make_text_id(job_texts, datalist, lambda x: x['name']),
+                #  'role_id': make_text_id(role_texts, datalist, lambda x: x['role']),
+                #  'icon': icon_name,
+                #  'actions': _actions,
+                #  }))
+            #  output_data[make_text_id(job_texts, datalist, lambda x: x['name'])] = {
+            output_data['only'].append({
                 'id': make_text_id(job_texts, datalist, lambda x: x['name']),
                 'role_id': make_text_id(role_texts, datalist, lambda x: x['role']),
                 'icon': icon_name,
                 'actions': _actions,
-                }))
+                })
 
 
     for l in LANG:
@@ -171,6 +189,9 @@ def main():
     for name, context in jsons:
         with open(os.path.join(DIST_DIR, 'data', name), 'w') as f:
             json.dump(context, f)
+
+    with open(os.path.join(DIST_DIR, 'data', 'skill_data.js'), 'w') as f:
+        f.write('export default ' + json.dumps(output_data))
 
 
 if __name__ == '__main__':

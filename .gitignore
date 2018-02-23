@@ -10,6 +10,8 @@ selenium-debug.log
 
 /docs/
 
+data-compiler/dist/
+
 # Editor directories and files
 .idea
 .vscode
