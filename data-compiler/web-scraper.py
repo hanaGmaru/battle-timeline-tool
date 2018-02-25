@@ -1,4 +1,5 @@
 import os
+import re
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -91,6 +92,8 @@ def main():
         'only': [],
     }
 
+    duration_time_regex = re.compile(r'^[0-9]+(\.[0-9]+)?(s|m)$')
+
     def make_text_id(store, values, filter):
         values = [(k, filter(v)) for k, v in values]
         k, v = values[0]
@@ -103,12 +106,21 @@ def main():
         return index
 
     def to_float(value):
+        if duration_time_regex.match(value):
+            if value[-1] == 's':
+                return float(value[:-1])
+            if value[-1] == 'm':
+                return float(value[:-1]) * 60
+        if value == 'Time remaining on original effect':  # Summoner Bane
+            return 0.0
+        if value == 'The time remaining on the original target\'s effects':  # Scholar Deployment
+            return 0.0
         if value == 'Instant':
             return 0.0
         if value == '-':
             return 0.0
-        if value[-1] == 's':
-            value = value[:-1]
+        if value == 'Infinite':
+            return -1
         return float(value)
 
     def make_actions_metadata(datalist):
@@ -127,6 +139,24 @@ def main():
                 'recast': to_float(d['recast']),
                 'content_id': make_text_id(content_texts, datalist, lambda x: x['actions'][i]['content']),
             })
+
+        for metadata in actions:
+            action_id = metadata['id']
+            content_id = metadata['content_id']
+            content = content_texts[_][content_id]
+            combo_actions = []
+            duration = 0.0
+
+            for c in content:
+                if c.startswith('Duration:'):
+                    duration = to_float(c[9:].strip())
+                if c.startswith('Combo Action:'):
+                    combo_actions = [ action_texts[_].index(x.strip()) for x in c[13:].split(' or ') ]
+
+            metadata.update(
+                duration=duration,
+                combo_actions=combo_actions,
+                )
 
         return  actions, images
 
